@@ -28,7 +28,8 @@ class IWD_Opc_Model_Observer{
 			$email = $observer->getEvent()->getOrder()->getCustomerEmail();
 			
 			$subscriber = Mage::getModel('newsletter/subscriber')->loadByEmail($email);
-	        if($subscriber->getStatus() != Mage_Newsletter_Model_Subscriber::STATUS_SUBSCRIBED && $subscriber->getStatus() != Mage_Newsletter_Model_Subscriber::STATUS_UNSUBSCRIBED) {
+	        if($subscriber->getStatus() != Mage_Newsletter_Model_Subscriber::STATUS_SUBSCRIBED &&
+	                $subscriber->getStatus() != Mage_Newsletter_Model_Subscriber::STATUS_UNSUBSCRIBED) {
 	            $subscriber->setImportMode(true)->subscribe($email);
 	            
 	            $subscriber = Mage::getModel('newsletter/subscriber')->loadByEmail($email);
@@ -39,17 +40,14 @@ class IWD_Opc_Model_Observer{
 		
 	}
 	
+	
 	public function applyComment($observer){
 		$order = $observer->getData('order');
-		
 		$comment = Mage::getSingleton('core/session')->getOpcOrderComment();
 		if (!Mage::helper('opc')->isShowComment() || empty($comment)){
 			return;
 		}
 		try{
-			$order->setCustomerComment($comment);
-			$order->setCustomerNoteNotify(true);
-			$order->setCustomerNote($comment);
 			$order->addStatusHistoryComment($comment)->setIsVisibleOnFront(true)->setIsCustomerNotified(true);
 			$order->save();
 			$order->sendOrderUpdateEmail(true, $comment);
@@ -57,5 +55,5 @@ class IWD_Opc_Model_Observer{
 			Mage::logException($e);
 		}
 	}
-
+	
 }

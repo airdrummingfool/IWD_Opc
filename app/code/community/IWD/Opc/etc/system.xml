@@ -138,17 +138,6 @@
 							<show_in_website>1</show_in_website>
 							<show_in_store>1</show_in_store>
 						</comment>
-
-						<discount>
-							<label>Show discount form? </label>
-							<frontend_type>select</frontend_type>
-							<source_model>adminhtml/system_config_source_yesno</source_model>
-							<isrequired>true</isrequired>
-							<sort_order>80</sort_order>
-							<show_in_default>1</show_in_default>
-							<show_in_website>1</show_in_website>
-							<show_in_store>1</show_in_store>
-						</discount>
 						
 					</fields>
 				</default>
@@ -282,94 +271,9 @@
 					</fields>
 				</paypallogin>
 				
-				<design>
-					<label>Buttons color</label>
-					<sort_order>60</sort_order>
-					<show_in_default>1</show_in_default>
-					<expanded>1</expanded>
-					<fields>
-						<plbgcolor translate="label">
-							<label>Place Order and Login buttons background color</label>
-							<frontend_type>text</frontend_type>
-							<sort_order>20</sort_order>
-							<show_in_default>1</show_in_default>
-							<show_in_website>1</show_in_website>
-							<show_in_store>1</show_in_store>
-							<comment><![CDATA[<span>Please enter color HEX code, or leave empty.</span>]]></comment>
-						</plbgcolor>
-						
-						<plovercolor translate="label">
-							<label>Place Order and Login buttons rollover color</label>
-							<frontend_type>text</frontend_type>
-							<sort_order>30</sort_order>
-							<show_in_default>1</show_in_default>
-							<show_in_website>1</show_in_website>
-							<show_in_store>1</show_in_store>
-							<comment><![CDATA[<span>Please enter color HEX code, or leave empty.</span>]]></comment>
-						</plovercolor>
-
-						<pltextcolor translate="label">
-							<label>Place Order and Login buttons text color</label>
-							<frontend_type>text</frontend_type>
-							<sort_order>40</sort_order>
-							<show_in_default>1</show_in_default>
-							<show_in_website>1</show_in_website>
-							<show_in_store>1</show_in_store>
-							<comment><![CDATA[<span>Please enter color HEX code, or leave empty.</span>]]></comment>
-						</pltextcolor>
-
-						<plhovertextcolor translate="label">
-							<label>Place Order and Login buttons text rollover color</label>
-							<frontend_type>text</frontend_type>
-							<sort_order>50</sort_order>
-							<show_in_default>1</show_in_default>
-							<show_in_website>1</show_in_website>
-							<show_in_store>1</show_in_store>
-							<comment><![CDATA[<span>Please enter color HEX code, or leave empty.</span>]]></comment>
-						</plhovertextcolor>
-						
-						<btnbgcolor translate="label">
-							<label>Other buttons background color</label>
-							<frontend_type>text</frontend_type>
-							<sort_order>60</sort_order>
-							<show_in_default>1</show_in_default>
-							<show_in_website>1</show_in_website>
-							<show_in_store>1</show_in_store>
-							<comment><![CDATA[<span>Please enter color HEX code, or leave empty.</span>]]></comment>
-						</btnbgcolor>
-						
-						<btnovercolor translate="label">
-							<label>Other buttons rollover color</label>
-							<frontend_type>text</frontend_type>
-							<sort_order>70</sort_order>
-							<show_in_default>1</show_in_default>
-							<show_in_website>1</show_in_website>
-							<show_in_store>1</show_in_store>
-							<comment><![CDATA[<span>Please enter color HEX code, or leave empty.</span>]]></comment>
-						</btnovercolor>
-
-						<btntextcolor translate="label">
-							<label>Other buttons text color</label>
-							<frontend_type>text</frontend_type>
-							<sort_order>80</sort_order>
-							<show_in_default>1</show_in_default>
-							<show_in_website>1</show_in_website>
-							<show_in_store>1</show_in_store>
-							<comment><![CDATA[<span>Please enter color HEX code, or leave empty.</span>]]></comment>
-						</btntextcolor>
-						
-						<btnhovertextcolor translate="label">
-							<label>Other buttons text rollover color</label>
-							<frontend_type>text</frontend_type>
-							<sort_order>90</sort_order>
-							<show_in_default>1</show_in_default>
-							<show_in_website>1</show_in_website>
-							<show_in_store>1</show_in_store>
-							<comment><![CDATA[<span>Please enter color HEX code, or leave empty.</span>]]></comment>
-						</btnhovertextcolor>						
-					</fields>
-				</design>
-
+				
+				
+				
 			</groups>
 
 		</opc>

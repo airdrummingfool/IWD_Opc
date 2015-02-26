@@ -11,8 +11,6 @@ class IWD_Opc_Helper_Data extends Mage_Core_Helper_Abstract{
 	
 	const XML_PATH_COMMENT = 'opc/default/comment';
 	
-	const XML_PATH_DISCOUNT = 'opc/default/discount';
-	
 	const XML_PAYPAL_LIGHTBOX_SANDBOX = 'opc/paypal/sandbox';
 	
 	const XML_PAYPAL_LIGHTBOX_ENABLED = 'opc/paypal/status';
@@ -87,17 +85,13 @@ class IWD_Opc_Helper_Data extends Mage_Core_Helper_Abstract{
 	public function isShowComment(){
 		return Mage::getStoreConfig(self::XML_PATH_COMMENT);
 	}
-
-	public function isShowDiscount(){
-		return Mage::getStoreConfig(self::XML_PATH_DISCOUNT);
-	}
 	
-	public function getPayPalExpressUrl($token){
-		
+	
+	public function getPayPalExpressUrl(){
 		if (Mage::getStoreConfig(self::XML_PAYPAL_LIGHTBOX_SANDBOX)){
-			return 'https://www.sandbox.paypal.com/checkoutnow?token='.$token;
+			return 'https://www.sandbox.paypal.com/checkoutnow?token=';
 		}else{
-			return 'https://www.paypal.com/checkoutnow?token='.$token;
+			return 'https://www.paypal.com/checkoutnow?token=';
 		}
 	
 	}
@@ -105,72 +99,4 @@ class IWD_Opc_Helper_Data extends Mage_Core_Helper_Abstract{
 	public function getPayPalLightboxEnabled(){
 		return (bool)Mage::getStoreConfig(self::XML_PAYPAL_LIGHTBOX_ENABLED);
 	}
-	
-	public function getAvailablePaymentMethods()
-	{
-		$payment_methods = array();
-		$methods = Mage::app()->getLayout()->createBlock('checkout/onepage_payment_methods')->getMethods();
-		foreach ($methods as $_method)
-		{
-			$_code = $_method->getCode();
-			$payment_methods[] = $_code;
-		}
-	
-		return $payment_methods;
-	}
-	
-	public function getSelectedPaymentMethod()
-	{
-		return Mage::app()->getLayout()->createBlock('checkout/onepage_payment_methods')->getSelectedMethodCode();
-	}
-	
-	/**
-	 * check if list of available methods was changed
-	 * 
-	 * @param array $methods_before
-	 * @param array $methods_after
-	 * @return string - method to use
-	 */
-	public function checkUpdatedPaymentMethods($methods_before, $methods_after)
-	{
-		// check if need to reload payment methods
-		$selected_method_code = $this->getSelectedPaymentMethod();
-		if(!in_array($selected_method_code, $methods_after))
-			$selected_method_code = false;
-			
-		$pm_changed = false;
-		if(count($methods_before) != count($methods_after))
-			$pm_changed = true;
-		
-		$free_available = false;
-		foreach($methods_after as $_code)
-		{
-			if($_code == 'free')
-				$free_available = $_code;
-			if(!$pm_changed)
-			{
-				if(!in_array($_code, $methods_before))
-					$pm_changed = true;
-			}
-		}
-		
-		if($pm_changed)
-		{
-			$use_method = $selected_method_code;
-			if($free_available)
-				$use_method = $free_available;
-			return $use_method;
-		}
-		//////
-		
-		return -1; // no changes 
-	}	
-	
-	public function getGrandTotal(){
-	    $quote = Mage::getModel('checkout/session')->getQuote();
-	    $total = $quote->getGrandTotal();
-	     
-	    return Mage::helper('checkout')->formatPrice($total);
-	}
-	
 }

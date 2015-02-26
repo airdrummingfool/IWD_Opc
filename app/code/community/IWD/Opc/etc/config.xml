@@ -2,7 +2,7 @@
 <config>
 	<modules>
         <IWD_Opc>
-            <version>4.0.5</version>
+            <version>3.2.3</version>
         </IWD_Opc>
 	</modules>
 	
@@ -23,7 +23,8 @@
 	</adminhtml>
 	
 	<frontend>
-		<routers>
+	
+		 <routers>
             <opc>
                 <use>standard</use>
                 <args>
@@ -39,7 +40,8 @@
                     </modules>
                 </args>
             </checkout>
-            </routers>
+            
+        </routers>
         
         <layout>
             <updates>
@@ -78,16 +80,16 @@
                     </newsletter_order_place_after>
                 </observers>
             </sales_order_place_after>
-
-            <checkout_type_onepage_save_order>
-            	<observers>
-            		<checkout_type_onepage_save_order>
+            
+             <checkout_submit_all_after>
+                <observers>
+                    <opc_checkout_submit_all_after>
                         <class>opc/observer</class>
-                        <method>applyComment</method>            			
-            		</checkout_type_onepage_save_order>
-            	</observers>
-            </checkout_type_onepage_save_order>
-
+                        <method>applyComment</method>
+                    </opc_checkout_submit_all_after>
+                </observers>
+            </checkout_submit_all_after>
+            
         </events>
 
     </frontend>
@@ -103,12 +105,6 @@
 					<config>IWD_Opc_Model_Paypal_Config</config>
 				</rewrite>
 			</paypal>
-
-        	<braintree_payments>
-				<rewrite>
-					<paymentmethod>IWD_Opc_Model_Braintree_Paymentmethod</paymentmethod>
-				</rewrite>
-			</braintree_payments>
 			
 			<opc>
 				<class>IWD_Opc_Model</class>
@@ -125,7 +121,9 @@
         	</opc_resource>
 		</models>
 
-		<resources>
+        
+
+        <resources>
         			
             <opc_write>
                 <connection>
@@ -179,13 +177,6 @@
                 </rewrite>
             </checkout>
             
-            <paypal>
-				<rewrite>
-					<standard_form>IWD_Opc_Block_Paypal_Standard_Form</standard_form>
-					<express_form>IWD_Opc_Block_Paypal_Express_Form</express_form>
-				</rewrite>
-			</paypal>
-            
         </blocks>
     </global>
     
@@ -203,7 +194,6 @@
     			<show_shipping>1</show_shipping>
     			<terms_type>1</terms_type>
     			<comment>0</comment>
-    			<discount>1</discount>
     		</default>
     		<geo>
 				<country>0</country>
@@ -219,7 +209,7 @@
 			<paypallogin>
 				<status>0</status>
 	            <sandbox>0</sandbox>
-			</paypallogin>			
+			</paypallogin>
     	</opc>
     </default>
 </config>

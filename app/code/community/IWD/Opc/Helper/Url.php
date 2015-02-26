@@ -6,7 +6,7 @@ class IWD_Opc_Helper_Url extends Mage_Checkout_Helper_Url{
      *
      * @return string
      */
-    public function getCheckoutUrl(){
+	public function getCheckoutUrl(){
     	if (Mage::helper('opc')->isEnable()){
         	return $this->_getUrl('onepage', array('_secure'=>true));
     	}else{

@@ -10,7 +10,6 @@ IWD.OPC = {
 		
 		agreements : null,
 		saveOrderStatus:false,
-		is_subscribe:false,
 		
 		initMessages: function(){
 			$j('.close-message-wrapper, .opc-messages-action .button').click(function(){
@@ -23,30 +22,11 @@ IWD.OPC = {
 		initSaveOrder: function(){
 			
 			$j(document).on('click', '.opc-btn-checkout', function(){
-
-				if (IWD.OPC.Checkout.disabledSave==true)
+				if (IWD.OPC.Checkout.disabledSave==true){
 					return;
-
-				// check agreements
-				var mis_aggree = false;
-				$j('#checkout-agreements input[name*="agreement"]').each(function(){
-					if(!$j(this).is(':checked')){
-						mis_aggree = true;
-					}
-				});
-				
-				if(mis_aggree){
-					$j('.opc-message-container').html($j('#agree_error').html());
-					$j('.opc-message-wrapper').show();
-					IWD.OPC.Checkout.hideLoader();
-					IWD.OPC.Checkout.unlockPlaceOrder();
-					IWD.OPC.saveOrderStatus = false;
-					return false;
 				}
-				///
-				
-				var addressForm = new VarienForm('opc-address-form-billing');
-				if (!addressForm.validator.validate()){
+				var addressForm = new VarienForm('billing-new-address-form');
+				if (!addressForm.validator.validate()){				
 					return;
 				}
 				
@@ -57,25 +37,9 @@ IWD.OPC = {
 					}
 				}
 				
-				// check if LIPP enabled
-			    if(typeof(IWD.LIPP) != 'undefined' && IWD.LIPP != undefined && IWD.LIPP != '' && IWD.LIPP)
-			    {
-					if(IWD.LIPP.lipp_enabled){
-						var method = payment.currentMethod;
-						if (method.indexOf('paypaluk_express')!=-1 || method.indexOf('paypal_express')!=-1){
-							if (IWD.OPC.Checkout.config.comment!=="0")
-								IWD.OPC.saveCustomerComment();							
-							IWD.LIPP.redirectPayment();
-							return;
-						}
-					}			    	
-			    }
-			    ////
-				
 				IWD.OPC.saveOrderStatus = true;
-				IWD.OPC.Plugin.dispatch('saveOrderBefore');
+				
 				if (IWD.OPC.Checkout.isVirtual===false){
-					IWD.OPC.Checkout.lockPlaceOrder();
 					IWD.OPC.Shipping.saveShippingMethod();
 				}else{
 					IWD.OPC.validatePayment();
@@ -88,72 +52,23 @@ IWD.OPC = {
 		
 		/** INIT CHAGE PAYMENT METHOD **/
 		initPayment: function(){
-			
-			IWD.OPC.removeNotAllowedPaymentMethods();
-			
 			IWD.OPC.bindChangePaymentFields();
 			$j(document).on('click', '#co-payment-form input[type="radio"]', function(event){
-				IWD.OPC.removeNotAllowedPaymentMethods();
-				
 				IWD.OPC.validatePayment();
 			});
-		},
-		
-		/** remove not allowed payment method **/
-		removeNotAllowedPaymentMethods: function(){
-			// remove p_method_authorizenet_directpost
-			var auth_dp_obj = $j('#p_method_authorizenet_directpost');
-			if(auth_dp_obj && auth_dp_obj.attr('id') == 'p_method_authorizenet_directpost')
-			{
-				if(auth_dp_obj.attr('checked'))
-					auth_dp_obj.attr('checked', false);
-				
-				auth_dp_obj.parent('dt').remove();
-				$j('#payment_form_authorizenet_directpost').parent('dd').remove();
-				$j('#directpost-iframe').remove();
-				$j('#co-directpost-form').remove();
-			}
-			////
 		},
 		
 		/** CHECK PAYMENT IF PAYMENT IF CHECKED AND ALL REQUIRED FIELD ARE FILLED PUSH TO SAVE **/
 		validatePayment: function(){	
 			
-			// check all required fields not empty
-			var is_empty = false;
-			$j('#co-payment-form .required-entry').each(function(){
-				if($j(this).val() == '' && $j(this).css('display') != 'none' && !$j(this).attr('disabled'))
-					is_empty = true;
-			});
-
-			if(!IWD.OPC.saveOrderStatus){
-				if(is_empty){
-					IWD.OPC.saveOrderStatus = false;
-					IWD.OPC.Checkout.hideLoader();
-					IWD.OPC.Checkout.unlockPlaceOrder();				
-					return false;
-				}
-			}
-			////
-
-			var vp = payment.validate();
-			if(!vp)
-			{
-				IWD.OPC.saveOrderStatus = false;
-				IWD.OPC.Checkout.hideLoader();
-				IWD.OPC.Checkout.unlockPlaceOrder();
-				return false;
-			}
-
+			payment.validate();
+			
 			var paymentMethodForm = new Validation('co-payment-form', { onSubmit : false, stopOnFirst : false, focusOnError : false});
 			  	
-			if (paymentMethodForm.validate()){
+			if (paymentMethodForm.validate()){					
 				IWD.OPC.savePayment();
 			}else{
 				IWD.OPC.saveOrderStatus = false;
-				IWD.OPC.Checkout.hideLoader();
-				IWD.OPC.Checkout.unlockPlaceOrder();
-				
 				IWD.OPC.bindChangePaymentFields();
 			}
 			
@@ -161,7 +76,7 @@ IWD.OPC = {
 		},
 		
 		/** BIND CHANGE PAYMENT FIELDS **/ 
-		bindChangePaymentFields: function(){			
+		bindChangePaymentFields: function(){
 			IWD.OPC.unbindChangePaymentFields();
 			
 			$j('#co-payment-form input').keyup(function(event){
@@ -199,8 +114,7 @@ IWD.OPC = {
 			if (IWD.OPC.Checkout.xhr!=null){
 				IWD.OPC.Checkout.xhr.abort();
 			}
-			
-			IWD.OPC.Checkout.lockPlaceOrder();
+			IWD.OPC.Checkout.showLoader();
 			if (payment.currentMethod != 'stripe') {
 				var form = $j('#co-payment-form').serializeArray();
 				
@@ -218,7 +132,6 @@ IWD.OPC = {
 					if (response.error) {
 						IWD.OPC.Checkout.hideLoader();
 						IWD.OPC.Checkout.xhr = null;
-						IWD.OPC.Checkout.unlockPlaceOrder();
 						alert(response.error.message);
 					} else {
 						$('stripe_token').value = response['id'];
@@ -231,21 +144,17 @@ IWD.OPC = {
 		
 		/** CHECK RESPONSE FROM AJAX AFTER SAVE PAYMENT METHOD **/
 		preparePaymentResponse: function(response){
+			IWD.OPC.Checkout.hideLoader();					
 			IWD.OPC.Checkout.xhr = null;
 			
 			IWD.OPC.agreements = $j('#checkout-agreements').serializeArray();
 			
-			IWD.OPC.getSubscribe();
-
-			if (typeof(response.review)!= "undefined"){
-				IWD.OPC.Decorator.updateGrandTotal(response);
+			
+			if (typeof(response.review)!= "undefined" && IWD.OPC.saveOrderStatus===false){					
 				$j('#opc-review-block').html(response.review);
 				IWD.OPC.Checkout.removePrice();
-				
-				// need to recheck subscribe and agreenet checkboxes
-				IWD.OPC.recheckItems();
 			}
-
+			
 			if (typeof(response.error) != "undefined"){
 				
 				IWD.OPC.Plugin.dispatch('error');
@@ -253,12 +162,11 @@ IWD.OPC = {
 				$j('.opc-message-container').html(response.error);
 				$j('.opc-message-wrapper').show();
 				IWD.OPC.Checkout.hideLoader();
-				IWD.OPC.Checkout.unlockPlaceOrder();
 				IWD.OPC.saveOrderStatus = false;
 				
 				return;
 			}
-
+			
 			//SOME PAYMENT METHOD REDIRECT CUSTOMER TO PAYMENT GATEWAY
 			if (typeof(response.redirect) != "undefined" && IWD.OPC.saveOrderStatus===true){
 				IWD.OPC.Checkout.xhr = null;
@@ -266,22 +174,11 @@ IWD.OPC = {
 				if (IWD.OPC.Checkout.xhr==null){
 					setLocation(response.redirect);
 				}
-				else
-				{
-					IWD.OPC.Checkout.hideLoader();
-					IWD.OPC.Checkout.unlockPlaceOrder();					
-				}
-				
 				return;
 			}
 			
 			if (IWD.OPC.saveOrderStatus===true){
 				IWD.OPC.saveOrder();				
-			}
-			else
-			{
-				IWD.OPC.Checkout.hideLoader();
-				IWD.OPC.Checkout.unlockPlaceOrder();				
 			}
 			
 			IWD.OPC.Plugin.dispatch('savePaymentAfter');
@@ -293,28 +190,13 @@ IWD.OPC = {
 		saveOrder: function(){
 			var form = $j('#co-payment-form').serializeArray();
 			form  = IWD.OPC.checkAgreement(form);
-			form  = IWD.OPC.checkSubscribe(form);
-			form  = IWD.OPC.getComment(form);
-			
 			IWD.OPC.Checkout.showLoader();
-			IWD.OPC.Checkout.lockPlaceOrder();				
-
 			if (IWD.OPC.Checkout.config.comment!=="0"){
 				IWD.OPC.saveCustomerComment();
-				
-				setTimeout(function(){
-					IWD.OPC.callSaveOrder(form);				
-				},600);
 			}
-			else
-			{
-				IWD.OPC.callSaveOrder(form);
-			}
-		},
-		
-		callSaveOrder: function(form){
+			
 			IWD.OPC.Plugin.dispatch('saveOrder');
-			IWD.OPC.Checkout.xhr = $j.post(IWD.OPC.Checkout.saveOrderUrl ,form, IWD.OPC.prepareOrderResponse,'json');			
+			IWD.OPC.Checkout.xhr = $j.post(IWD.OPC.Checkout.saveOrderUrl ,form, IWD.OPC.prepareOrderResponse,'json');
 		},
 		
 		/** SAVE CUSTOMER COMMNET **/
@@ -322,74 +204,20 @@ IWD.OPC = {
 			$j.post(IWD.OPC.Checkout.config.baseUrl + 'onepage/json/comment',{"comment": $j('#customer_comment').val()});
 		}, 
 		
-		getComment: function(form){
-			var com = $j('#customer_comment').val();
-			form.push({"name":"customer_comment", "value":com});
-			return form;
-		},
-		
 		/** ADD AGGREMENTS TO ORDER FORM **/
 		checkAgreement: function(form){
 			$j.each(IWD.OPC.agreements, function(index, data){
+				
 				form.push(data);
 			});
 			return form;
 		},
 		
-		/** ADD SUBSCRIBE TO ORDER FORM **/
-		getSubscribe: function(){
-			if ($j('#is_subscribed').length){
-				if ($j('#is_subscribed').is(':checked'))
-					IWD.OPC.is_subscribe = true;
-				else
-					IWD.OPC.is_subscribe = false;
-			}
-			else
-				IWD.OPC.is_subscribe = false;			
-		},
-		
-		checkSubscribe: function(form){
-			
-			if(IWD.OPC.is_subscribe)
-				form.push({"name":"is_subscribed", "value":"1"});
-			else
-				form.push({"name":"is_subscribed", "value":"0"});
-
-			return form;
-		},
-		
-		/** Check checkboxes after refreshing review section **/
-		recheckItems: function(){
-			// check subscribe
-			if ($j('#is_subscribed').length){
-				if(IWD.OPC.is_subscribe)
-					$j('#is_subscribed').prop('checked', true);
-				else
-					$j('#is_subscribed').prop('checked', false);
-			}
-			
-			// check agree
-			IWD.OPC.recheckAgree();
-		},
-		
-		recheckAgree: function(){			
-			if(IWD.OPC.agreements != null){
-				$j.each(IWD.OPC.agreements, function(index, data){
-					$j('#checkout-agreements input').each(function(){
-						if(data.name == $j(this).prop('name'))
-							$j(this).prop('checked', true);
-					});
-				});
-			}
-		},
 		
 		/** CHECK RESPONSE FROM AJAX AFTER SAVE ORDER **/
 		prepareOrderResponse: function(response){
-			IWD.OPC.Checkout.xhr = null;
 			if (typeof(response.error) != "undefined" && response.error!=false){
 				IWD.OPC.Checkout.hideLoader();
-				IWD.OPC.Checkout.unlockPlaceOrder();				
-				
 				IWD.OPC.saveOrderStatus = false;
 				$j('.opc-message-container').html(response.error);
 				$j('.opc-message-wrapper').show();
@@ -399,8 +227,6 @@ IWD.OPC = {
 			
 			if (typeof(response.error_messages) != "undefined" && response.error_messages!=false){
 				IWD.OPC.Checkout.hideLoader();
-				IWD.OPC.Checkout.unlockPlaceOrder();				
-				
 				IWD.OPC.saveOrderStatus = false;
 				$j('.opc-message-container').html(response.error_messages);
 				$j('.opc-message-wrapper').show();
@@ -418,8 +244,6 @@ IWD.OPC = {
 			
 			if (typeof(response.update_section) != "undefined"){
 				IWD.OPC.Checkout.hideLoader();
-				IWD.OPC.Checkout.unlockPlaceOrder();				
-				
 				//create catch for default logic  - for not spam errors to console
 				try{
 					$j('#checkout-' + response.update_section.name + '-load').html(response.update_section.html);
@@ -429,12 +253,9 @@ IWD.OPC = {
 				
 				IWD.OPC.prepareExtendPaymentForm();
 				$j('#payflow-advanced-iframe').show();
-				$j('#payflow-link-iframe').show();
 				$j('#hss-iframe').show();
 				
 			}
-			IWD.OPC.Checkout.hideLoader();
-			IWD.OPC.Checkout.unlockPlaceOrder();				
 			
 			IWD.OPC.Plugin.dispatch('responseSaveOrder', response);
 		},
@@ -451,8 +272,6 @@ IWD.OPC.Checkout = {
 		isVirtual: false,
 		disabledSave: false,
 		saveOrderUrl: null,
-		xhr2: null,
-		updateShippingPaymentProgress: false,
 		
 		init:function(){		
 			
@@ -467,7 +286,9 @@ IWD.OPC.Checkout = {
 			
 			//DECORATE
 			this.clearOnChange();
-			this.removePrice();			
+			this.removePrice();
+			
+			
 			
 			//MAIN FUNCTION
 			IWD.OPC.Billing.init();
@@ -489,18 +310,22 @@ IWD.OPC.Checkout = {
 				IWD.OPC.Checkout.pullPayments();
 			}
 			
+			
+						
 			IWD.OPC.initPayment();
 		},
+		
+		 
 		
 		/** PARSE RESPONSE FROM AJAX SAVE BILLING AND SHIPPING METHOD **/
 		prepareAddressResponse: function(response){
 			IWD.OPC.Checkout.xhr = null;
 			
+			IWD.OPC.Checkout.unlockPlaceOrder();
 			if (typeof(response.error) != "undefined"){
 				$j('.opc-message-container').html(response.message);
 				$j('.opc-message-wrapper').show();
 				IWD.OPC.Checkout.hideLoader();
-				IWD.OPC.Checkout.unlockPlaceOrder();
 				return;
 			}
 			
@@ -508,7 +333,6 @@ IWD.OPC.Checkout = {
             if (typeof(response.address_validation) != "undefined"){
                 $j('#checkout-address-validation-load').empty().html(response.address_validation);
                 IWD.OPC.Checkout.hideLoader();
-                IWD.OPC.Checkout.unlockPlaceOrder();
                 return;
             }
 			
@@ -518,25 +342,17 @@ IWD.OPC.Checkout = {
 			
 			if (typeof(response.payments) != "undefined"){
 				$j('#checkout-payment-method-load').empty().html(response.payments);
-				
-				IWD.OPC.removeNotAllowedPaymentMethods();
 				payment.initWhatIsCvvListeners();//default logic for view "what is this?"
+				
 			}
 			
 			if (typeof(response.isVirtual) != "undefined"){
+				
 				IWD.OPC.Checkout.isVirtual = true;
 			}
 			
 			if (IWD.OPC.Checkout.isVirtual===false){
-				var update_payments = false;
-				if (typeof(response.reload_payments) != "undefined")
-					update_payments = true;
-				
-				var reload_totals = false;
-				if (typeof(response.reload_totals) != "undefined")
-					reload_totals = true;
-				
-				IWD.OPC.Shipping.saveShippingMethod(update_payments, reload_totals);
+				IWD.OPC.Shipping.saveShippingMethod();
 				
 			}else{
 				$j('.shipping-block').hide();
@@ -548,10 +364,8 @@ IWD.OPC.Checkout = {
 		/** PARSE RESPONSE FROM AJAX SAVE SHIPPING METHOD **/
 		prepareShippingMethodResponse: function(response){
 			IWD.OPC.Checkout.xhr = null;
+			IWD.OPC.Checkout.hideLoader();
 			if (typeof(response.error)!="undefined"){
-				
-				IWD.OPC.Checkout.hideLoader();
-				IWD.OPC.Checkout.unlockPlaceOrder();
 				
 				IWD.OPC.Plugin.dispatch('error');
 				
@@ -563,14 +377,11 @@ IWD.OPC.Checkout = {
 			
 			if (typeof(response.review)!="undefined" && IWD.OPC.saveOrderStatus===false){
 				try{
-					IWD.OPC.Decorator.updateGrandTotal(response);
 					$j('#opc-review-block').html(response.review);
 				}catch(e){
 					
 				}
 				IWD.OPC.Checkout.removePrice();
-				
-//				IWD.OPC.recheckAgree();
 			}
 			
 			
@@ -613,15 +424,13 @@ IWD.OPC.Checkout = {
 		},
 		
 		showLoader: function(){
-			$j('.opc-ajax-loader').show();
-			//$j('.opc-btn-checkout').addClass('button-disabled');
+			//$j('.opc-ajax-loader').show();
+			$j('.opc-btn-checkout').addClass('button-disabled');
 		},
 		
 		hideLoader: function(){
-			setTimeout(function(){
-				$j('.opc-ajax-loader').hide();
-				//$j('.opc-btn-checkout').removeClass('button-disabled');				
-			},600);
+			//$j('.opc-ajax-loader').hide();
+			$j('.opc-btn-checkout').removeClass('button-disabled');
 		},
 		
 		/** APPLY SHIPPING METHOD FORM TO BILLING FORM **/
@@ -647,44 +456,33 @@ IWD.OPC.Checkout = {
 		
 		/** PULL REVIEW **/
 		pullReview: function(){
-			IWD.OPC.Checkout.lockPlaceOrder();
+			IWD.OPC.Checkout.showLoader();
 			IWD.OPC.Checkout.xhr = $j.post(IWD.OPC.Checkout.config.baseUrl + 'onepage/json/review',function(response){
-				IWD.OPC.Checkout.xhr = null;
 				IWD.OPC.Checkout.hideLoader();
-				IWD.OPC.Checkout.unlockPlaceOrder();
 				if (typeof(response.review)!="undefined"){
-					IWD.OPC.Decorator.updateGrandTotal(response);
 					$j('#opc-review-block').html(response.review);
-					
 					IWD.OPC.Checkout.removePrice();
-					
-//					IWD.OPC.recheckAgree();
 				}
-				IWD.OPC.removeNotAllowedPaymentMethods();
 			});
 		},
 		
 		/** PULL PAYMENTS METHOD AFTER LOAD PAGE **/
 		pullPayments: function(){
-			IWD.OPC.Checkout.lockPlaceOrder();
+			IWD.OPC.Checkout.showLoader();
 			IWD.OPC.Checkout.xhr = $j.post(IWD.OPC.Checkout.config.baseUrl + 'onepage/json/payments',function(response){
-				IWD.OPC.Checkout.xhr = null;
+				IWD.OPC.Checkout.hideLoader();				
 				
 				if (typeof(response.error)!="undefined"){
 					$j('.opc-message-container').html(response.error);
 					$j('.opc-message-wrapper').show();
 					IWD.OPC.saveOrderStatus = false;
-					IWD.OPC.Checkout.hideLoader();
-					IWD.OPC.Checkout.unlockPlaceOrder();					
 					return;
 				}
 				
 				if (typeof(response.payments)!="undefined"){
 					$j('#checkout-payment-method-load').html(response.payments);
-					
 					payment.initWhatIsCvvListeners();
 					IWD.OPC.bindChangePaymentFields();
-					IWD.OPC.Decorator.setCurrentPaymentActive();
 				};
 				
 				IWD.OPC.Checkout.pullReview();
@@ -692,141 +490,30 @@ IWD.OPC.Checkout = {
 			},'json');
 		},
 		
-		lockPlaceOrder: function(mode){
-			if(typeof(mode)=='undefined' || mode == undefined || !mode)
-				mode = 0;
-			if(mode == 0)
-				$j('.opc-btn-checkout').addClass('button-disabled');
+		lockPlaceOrder: function(){
+			$j('.opc-btn-checkout').addClass('button-disabled');
 			IWD.OPC.Checkout.disabledSave = true;
 		},
 		
 		unlockPlaceOrder: function(){
 			$j('.opc-btn-checkout').removeClass('button-disabled');
 			IWD.OPC.Checkout.disabledSave = false;
-		},
-	
-		abortAjax: function(){
-			if (IWD.OPC.Checkout.xhr!=null){
-				IWD.OPC.Checkout.xhr.abort();
-				
-				IWD.OPC.saveOrderStatus = false;
-				IWD.OPC.Checkout.hideLoader();
-				IWD.OPC.Checkout.unlockPlaceOrder();
-			}
-		},
-		
-		reloadShippingsPayments: function(form_type, delay){
-			if(typeof(delay) == 'undefined' || delay == undefined || !delay)
-				delay = 1400;
-			
-			clearTimeout(IWD.OPC.Checkout.updateShippingPaymentProgress);
-			
-			IWD.OPC.Checkout.updateShippingPaymentProgress = setTimeout(function(){
-				
-				var form = $j('#opc-address-form-'+form_type).serializeArray();
-				form = IWD.OPC.Checkout.applyShippingMethod(form);
-				
-				if (IWD.OPC.Checkout.xhr2!=null)
-					IWD.OPC.Checkout.xhr2.abort();
-				
-				IWD.OPC.Checkout.xhr2 = $j.post(IWD.OPC.Checkout.config.baseUrl + 'onepage/json/reloadShippingsPayments',form, IWD.OPC.Checkout.reloadShippingsPaymentsResponse,'json');
-				
-			}, delay);
-			
-		},
-		
-		reloadShippingsPaymentsResponse: function(response){
-			
-			IWD.OPC.Checkout.xhr2 = null;
-			
-			if (typeof(response.error) != "undefined"){
-				$j('.opc-message-container').html(response.message);
-				$j('.opc-message-wrapper').show();
-				IWD.OPC.Checkout.hideLoader();
-				IWD.OPC.Checkout.unlockPlaceOrder();
-				return;
-			}
-			
-			if (typeof(response.shipping) != "undefined"){
-				$j('#shipping-block-methods').empty().html(response.shipping);
-			}
-			
-			if (typeof(response.payments) != "undefined"){
-				
-				if(response.payments != ''){
-					$j('#checkout-payment-method-load').empty().html(response.payments);
-
-					IWD.OPC.removeNotAllowedPaymentMethods();
-					payment.initWhatIsCvvListeners();//default logic for view "what is this?"
-				}
-
-				if (IWD.OPC.Checkout.isVirtual===false){
-					var update_payments = false;
-					if (typeof(response.reload_payments) != "undefined")
-						update_payments = true;
-
-					IWD.OPC.Shipping.saveShippingMethod(update_payments);
-				}else{
-					$j('.shipping-block').hide();
-					$j('.payment-block').addClass('clear-margin');
-					IWD.OPC.Checkout.pullPayments();
-				}
-			}
-			else{
-				if(typeof(response.reload_totals) != "undefined")
-					IWD.OPC.Checkout.pullReview();
-			}
-		},
-		
-		checkRunReloadShippingsPayments: function(address_type){
-			var zip = $j('#'+address_type+':postcode').val();
-			var country = $j('#'+address_type+':country_id').val();
-			var region = $j('#'+address_type+':region_id').val();
-			
-			if(zip != '' || country != '' || region != '')
-				IWD.OPC.Checkout.reloadShippingsPayments(address_type);
 		}
+	
 };
 
 
 IWD.OPC.Billing = {
-		bill_need_update: true,
-		need_reload_shippings_payments: false,
-		validate_timeout: false,
-		
-		init: function(){
-			IWD.OPC.Billing.bill_need_update = true;
-
-			//set flag use billing for shipping and init change flag
-			var use_for_ship = false;
-			var el = $j('input[name="billing[use_for_shipping]"]');
-			if(typeof(el) != 'undefined' && el != undefined && el){
-				if(el.prop('type') == 'checkbox'){
-					if(el.is(':checked'))
-						use_for_ship = true;
-				}
-				else
-					use_for_ship = true;
-			}
-			else
-				use_for_ship = true;
-
-			if(use_for_ship)
-				this.setBillingForShipping(true);
-			else
-				this.setBillingForShipping(false, true);
-			////
 			
+		init: function(){
+			//set flag use billing for shipping and init change flag
+			this.setBillingForShipping(true);
 			$j('input[name="billing[use_for_shipping]"]').change(function(){
 				if ($j(this).is(':checked')){
 					IWD.OPC.Billing.setBillingForShipping(true);
 					$j('#opc-address-form-billing select[name="billing[country_id]"]').change();
-					IWD.OPC.Billing.need_reload_shippings_payments = 'billing';
-					IWD.OPC.Billing.validateForm();
 				}else{
-					IWD.OPC.Billing.setBillingForShipping(false);
-					IWD.OPC.Billing.need_reload_shippings_payments = 'shipping';
-					IWD.OPC.Shipping.validateForm();
+					IWD.OPC.Billing.setBillingForShipping(false);					
 				}
 			});
 			
@@ -847,63 +534,32 @@ IWD.OPC.Billing = {
 			
 			this.initChangeAddress();
 			this.initChangeSelectAddress();
+			
 		},
 		
 		/** CREATE EVENT FOR UPDATE SHIPPING BLOCK **/
 		initChangeAddress: function(){
 
-			$j('#opc-address-form-billing input').blur(function(){
-				if(IWD.OPC.Billing.bill_need_update)
-					IWD.OPC.Billing.validateForm();
-			});
-
-			$j('#opc-address-form-billing').mouseleave(function(){
-				if(IWD.OPC.Billing.bill_need_update)
-					IWD.OPC.Billing.validateForm();
+			$j('#opc-address-form-billing input').keyup(function(){
+				IWD.OPC.Billing.validateForm();
 			});
 			
-			$j('#opc-address-form-billing input').keydown(function(){
-				IWD.OPC.Billing.bill_need_update = true;
+			$j('#opc-address-form-billing input').focus(function(){
 				clearTimeout(IWD.OPC.Checkout.ajaxProgress);
-				IWD.OPC.Checkout.abortAjax();
-				
-				// check if zip
-				var el_id = $j(this).attr('id');
-				if(el_id == 'billing:postcode')
-					IWD.OPC.Checkout.reloadShippingsPayments('billing');
-
-				IWD.OPC.Billing.validateForm(3000);
 			});
 			
 			$j('#opc-address-form-billing select').not('#billing-address-select').change(function(){
-				// check if country
-				var el_id = $j(this).attr('id');
-				if(el_id == 'billing:country_id' || el_id == 'billing:region_id')
-					IWD.OPC.Checkout.reloadShippingsPayments('billing', 800);
-				
-				IWD.OPC.Billing.bill_need_update = true;
 				IWD.OPC.Billing.validateForm();
-			});			
+			});
 		},
 		
-		validateForm: function(delay){
-			clearTimeout(IWD.OPC.Billing.validate_timeout);
-			if(typeof(delay) == 'undefined' || delay == undefined || !delay)
-				delay = 100;
-			
-			IWD.OPC.Billing.validate_timeout = setTimeout(function(){
-				var mode = IWD.OPC.Billing.need_reload_shippings_payment;
-				IWD.OPC.Billing.need_reload_shippings_payment = false;
-
+		validateForm: function(){
+			setTimeout(function(){
 				var valid = IWD.OPC.Billing.validateAddressForm();
 				if (valid){
 					IWD.OPC.Billing.save();
 				}
-				else{
-					if(mode != false)
-						IWD.OPC.Checkout.checkRunReloadShippingsPayments(mode);
-				}
-			},delay);
+			},200);
 		},
 		
 		
@@ -923,35 +579,23 @@ IWD.OPC.Billing = {
 		
 		/** VALIDATE ADDRESS BEFORE SEND TO SAVE QUOTE**/
 		validateAddressForm: function(form){
-			// check all required fields not empty
-			var is_empty = false;
-			$j('#opc-address-form-billing .required-entry').each(function(){
-				if($j(this).val() == '' && $j(this).css('display') != 'none' && !$j(this).attr('disabled'))
-					is_empty = true;
-			});
-			if(is_empty)
-				return false;
-			////
-
-			var addressForm = new Validation('opc-address-form-billing', { onSubmit : false, stopOnFirst : false, focusOnError : false});
-			if (addressForm.validate()){				  		 
-				return true;
-			}else{				 
-				return false;
-			}
+			
+			  var addressForm = new Validation('opc-address-form-billing', { onSubmit : false, stopOnFirst : false, focusOnError : false});
+			  if (addressForm.validate()){				  		 
+				  return true;
+			  }else{				 
+				  return false;
+			  }
 		},
 		
 		/** SET SHIPPING AS BILLING TO TRUE OR FALSE **/
-		setBillingForShipping:function(useBilling, skip_copy){
+		setBillingForShipping:function(useBilling){
 			if (useBilling==true){
 				$j('input[name="billing[use_for_shipping]"]').prop('checked', true);
 				$j('input[name="shipping[same_as_billing]"]').prop('checked', true);
 				$j('#opc-address-form-shipping').addClass('hidden');				
 			}else{
-				if(typeof(skip_copy) == 'undefined' || skip_copy == undefined)
-					skip_copy = false
-				if(!skip_copy)
-					this.pushBilingToShipping();	
+				this.pushBilingToShipping();	
 				$j('input[name="billing[use_for_shipping]"]').prop('checked', false);
 				$j('input[name="shipping[same_as_billing]"]').prop('checked', false);
 				$j('#opc-address-form-shipping').removeClass('hidden');
@@ -995,19 +639,11 @@ IWD.OPC.Billing = {
 			$j('#opc-address-form-shipping select[name="shipping[country_id]"]').change();
 		},
 
-		/** METHOD CREATE AJAX REQUEST FOR UPDATE BILLING ADDRESS **/
+		/** METHOD CREATE AJAX REQUEST FOR UPDATE SHIPPING METHOD **/
 		save: function(){
 			if (IWD.OPC.Checkout.ajaxProgress!=false){
 				clearTimeout(IWD.OPC.Checkout.ajaxProgress);
 			}
-
-			// stop reload shippings/payments logic
-			if (IWD.OPC.Checkout.updateShippingPaymentProgress!=false)
-				clearTimeout(IWD.OPC.Checkout.updateShippingPaymentProgress);
-			
-			if (IWD.OPC.Checkout.xhr2!=null)
-				IWD.OPC.Checkout.xhr2.abort();
-			////
 			
 			IWD.OPC.Checkout.ajaxProgress = setTimeout(function(){
 					var form = $j('#opc-address-form-billing').serializeArray();
@@ -1017,25 +653,22 @@ IWD.OPC.Billing = {
 					if (IWD.OPC.Checkout.xhr!=null){
 						IWD.OPC.Checkout.xhr.abort();
 					}
-					
-					if($j('input[name="billing[use_for_shipping]"]').is(':checked'))
-						IWD.OPC.Checkout.showLoader();
-					else
-						IWD.OPC.Checkout.lockPlaceOrder(1);
-					
-					IWD.OPC.Billing.bill_need_update = false;		
+					//IWD.OPC.Checkout.showLoader();
+					IWD.OPC.Checkout.lockPlaceOrder();
 					IWD.OPC.Checkout.xhr = $j.post(IWD.OPC.Checkout.config.baseUrl + 'onepage/json/saveBilling',form, IWD.OPC.Checkout.prepareAddressResponse,'json');
-			}, 500);
+			}, 600);
 		},
+		
+		
+
 		
 };
 
 IWD.OPC.Shipping = {
-		ship_need_update: true,
-		validate_timeout: false,
+		
 		
 		init: function(){
-			IWD.OPC.Shipping.ship_need_update = true;
+		
 			this.initChangeAddress();
 			this.initChangeSelectAddress();
 			this.initChangeShippingMethod();
@@ -1045,36 +678,15 @@ IWD.OPC.Shipping = {
 		initChangeAddress: function(){
 			
 			$j('#opc-address-form-shipping input').blur(function(){
-				if(IWD.OPC.Shipping.ship_need_update)
-					IWD.OPC.Shipping.validateForm();
-			});
-
-			$j('#opc-address-form-shipping').mouseleave(function(){
-				if(IWD.OPC.Shipping.ship_need_update)
-					IWD.OPC.Shipping.validateForm();
+				IWD.OPC.Shipping.validateForm();
 			});
 			
-			$j('#opc-address-form-shipping input').keydown(function(){
-				IWD.OPC.Shipping.ship_need_update = true;
+			$j('#opc-address-form-shipping input').focus(function(){
 				clearTimeout(IWD.OPC.Checkout.ajaxProgress);
-				IWD.OPC.Checkout.abortAjax();
-
-				// check if zip
-				var el_id = $j(this).attr('id');
-				if(el_id == 'shipping:postcode')
-					IWD.OPC.Checkout.reloadShippingsPayments('shipping');
-
-				IWD.OPC.Shipping.validateForm(3000);
-				
 			});
+			
 			
 			$j('#opc-address-form-shipping select').not('#shipping-address-select').change(function(){
-				// check if country
-				var el_id = $j(this).attr('id');
-				if(el_id == 'shipping:country_id' || el_id == 'shipping:region_id')
-					IWD.OPC.Checkout.reloadShippingsPayments('shipping', 800);
-				
-				IWD.OPC.Shipping.ship_need_update = true;
 				IWD.OPC.Shipping.validateForm();
 			});
 		},
@@ -1095,50 +707,33 @@ IWD.OPC.Shipping = {
 		
 		//create observer for change shipping method. 
 		initChangeShippingMethod: function(){
+			
 			$j('.opc-wrapper-opc #shipping-block-methods').on('change', 'input[type="radio"]', function(){
+				
 				IWD.OPC.Shipping.saveShippingMethod();
+				
 			});
+			
 		},
 		
-		validateForm: function(delay){
-			clearTimeout(IWD.OPC.Shipping.validate_timeout);
-			if(typeof(delay) == 'undefined' || delay == undefined || !delay)
-				delay = 100;
-			
-			IWD.OPC.Shipping.validate_timeout = setTimeout(function(){
-				var mode = IWD.OPC.Billing.need_reload_shippings_payment;
-				IWD.OPC.Billing.need_reload_shippings_payment = false;
-
+		validateForm: function(){
+			setTimeout(function(){
 				var valid = IWD.OPC.Shipping.validateAddressForm();
 				if (valid){
 					IWD.OPC.Shipping.save();
 				}
-				else{
-					if(mode != false)
-						IWD.OPC.Checkout.checkRunReloadShippingsPayments(mode);
-				}
-			},delay);
+			},200);
 		},
 		
 		/** VALIDATE ADDRESS BEFORE SEND TO SAVE QUOTE**/
 		validateAddressForm: function(form){
-			// check all required fields not empty
-			var is_empty = false;
-			$j('#opc-address-form-shipping .required-entry').each(function(){
-				if($j(this).val() == '' && $j(this).css('display') != 'none' && !$j(this).attr('disabled'))
-					is_empty = true;
-			});
 			
-			if(is_empty)
-				return false;
-			////
-			
-			var addressForm = new Validation('opc-address-form-shipping', { onSubmit : false, stopOnFirst : false, focusOnError : false});
-			if (addressForm.validate()){				  		 
-				return true;
-			}else{				 
-				return false;
-			}
+			  var addressForm = new Validation('opc-address-form-shipping', { onSubmit : false, stopOnFirst : false, focusOnError : false});
+			  if (addressForm.validate()){				  		 
+				  return true;
+			  }else{				 
+				  return false;
+			  }
 		},
 		
 		/** METHOD CREATE AJAX REQUEST FOR UPDATE SHIPPIN METHOD **/
@@ -1147,53 +742,32 @@ IWD.OPC.Shipping = {
 				clearTimeout(IWD.OPC.Checkout.ajaxProgress);
 			}
 			
-			// stop reload shippings/payments logic
-			if (IWD.OPC.Checkout.updateShippingPaymentProgress!=false)
-				clearTimeout(IWD.OPC.Checkout.updateShippingPaymentProgress);
-			
-			if (IWD.OPC.Checkout.xhr2!=null)
-				IWD.OPC.Checkout.xhr2.abort();
-			////
-			
 			IWD.OPC.Checkout.ajaxProgress = setTimeout(function(){
 					var form = $j('#opc-address-form-shipping').serializeArray();
 					form = IWD.OPC.Checkout.applyShippingMethod(form);
 					if (IWD.OPC.Checkout.xhr!=null){
 						IWD.OPC.Checkout.xhr.abort();
 					}
-					IWD.OPC.Checkout.lockPlaceOrder(1);
-					
-					IWD.OPC.Shipping.ship_need_update = false;
+					IWD.OPC.Checkout.showLoader();
 					IWD.OPC.Checkout.xhr = $j.post(IWD.OPC.Checkout.config.baseUrl + 'onepage/json/saveShipping',form, IWD.OPC.Checkout.prepareAddressResponse,'json');
-			}, 500);
+			}, 300);
 		},
 		
-		saveShippingMethod: function(update_payments, reload_totals){
+		saveShippingMethod: function(){
 			
 			if (IWD.OPC.Shipping.validateShippingMethod()===false){
 
 				if (IWD.OPC.saveOrderStatus){	
-					$j('.opc-message-container').html($j('#pssm_msg').html());
+					$j('.opc-message-container').html('Please specify shipping method');
 					$j('.opc-message-wrapper').show();
 				}
 				IWD.OPC.saveOrderStatus = false;
 					
 				IWD.OPC.Checkout.hideLoader();
 				
-				if(typeof(update_payments) != 'undefined' && update_payments != undefined && update_payments) // if was request to reload payments
-					IWD.OPC.Checkout.pullPayments();
-				else{
-					if(typeof(reload_totals) == 'undefined' || reload_totals == undefined)
-						reload_totals = false;
-					
-					if(reload_totals)
-						IWD.OPC.Checkout.pullReview();
-					else
-						IWD.OPC.Checkout.unlockPlaceOrder();
-				}
-				
 				return;
 			}
+					
 			
 			if (IWD.OPC.Checkout.ajaxProgress!=false){
 				clearTimeout(IWD.OPC.Checkout.ajaxProgress);
@@ -1207,7 +781,7 @@ IWD.OPC.Shipping = {
 				}
 				IWD.OPC.Checkout.showLoader();
 				IWD.OPC.Checkout.xhr = $j.post(IWD.OPC.Checkout.config.baseUrl + 'onepage/json/saveShippingMethod',form, IWD.OPC.Checkout.prepareShippingMethodResponse);
-			}, 600);
+			}, 300);
 		},
 		
 		validateShippingMethod: function(){			
@@ -1226,6 +800,7 @@ IWD.OPC.Shipping = {
 IWD.OPC.Coupon = {
 		init: function(){
 			
+			
 			$j(document).on('click', '.apply-coupon', function(){
 				IWD.OPC.Coupon.applyCoupon(false);
 			});
@@ -1239,10 +814,10 @@ IWD.OPC.Coupon = {
 			$j(document).on('click','.discount-block h3', function(){
 				if ($j(this).hasClass('open-block')){
 					$j(this).removeClass('open-block');
-					$j(this).next().addClass('hidden');
+					$j('#opc-discount-coupon-form').hide();
 				}else{
-					$j(this).addClass('open-block');					
-					$j(this).next().removeClass('hidden');
+					$j(this).addClass('open-block');
+					$j('#opc-discount-coupon-form').show();
 				}
 			});
 			
@@ -1262,7 +837,6 @@ IWD.OPC.Coupon = {
 		},
 		
 		prepareResponse: function(response){
-			IWD.OPC.Checkout.xhr = null;
 			IWD.OPC.Checkout.hideLoader();
 			if (typeof(response.message) != "undefined"){
 				$j('.opc-message-container').html(response.message);
@@ -1271,48 +845,10 @@ IWD.OPC.Coupon = {
 				IWD.OPC.Checkout.pullReview();
 			}
 			if (typeof(response.coupon) != "undefined"){
-				$j('#opc-discount-coupon-form').replaceWith(response.coupon).show();				
-				$j('#opc-discount-coupon-form').show();
+				$j(response.coupon).replaceWith('#opc-discount-coupon-form');
 			}
-			if (typeof(response.payments)!="undefined"){
-				$j('#checkout-payment-method-load').html(response.payments);
-				
-				IWD.OPC.removeNotAllowedPaymentMethods();
-				
-				payment.initWhatIsCvvListeners();
-				IWD.OPC.bindChangePaymentFields();
-			};			
-		}
-};
-
-IWD.OPC.Comment = {
-		init: function(){
 			
-			$j(document).on('click','.comment-block h3', function(){
-				if ($j(this).hasClass('open-block')){
-					$j(this).removeClass('open-block');
-					$j(this).next().addClass('hidden');
-				}else{
-					$j(this).addClass('open-block');					
-					$j(this).next().removeClass('hidden');
-				}
-			});
 		}
-};
-			
-IWD.OPC.SignatureAtCheckout = {
-    init: function(){
-        $j(document).on('click','.signature-block h3', function(){
-            if ($j(this).hasClass('open-block')){
-                $j(this).removeClass('open-block');
-                $j(this).next().addClass('hidden');
-            }else{
-                $j(this).addClass('open-block');
-                $j(this).next().removeClass('hidden');
-            }
-        });
-
-    }
 };
 
 IWD.OPC.Agreement ={
@@ -1321,28 +857,16 @@ IWD.OPC.Agreement ={
 			
 			$j(document).on('click', '.view-agreement', function(e){
 				e.preventDefault();
-				$j('.opc-review-actions #modal-agreement').addClass('md-show');
+				$j('#modal-agreement').addClass('md-show');
 				
 				var id = $j(this).data('id');
 				var title = $j(this).html();
-				var content = $j('.opc-review-actions #agreement-block-'+id).html();
+				var content = $j('#agreement-block-'+id).html();
 				
-				$j('.opc-review-actions #agreement-title').html(title);
-				$j('.opc-review-actions #agreement-modal-body').html(content);
+				$j('#agreement-title').html(title);
+				$j('#agreement-modal-body').html(content);
 			});
 			
-			$j(document).on('click', '#checkout-agreements input[name*="agreement"]', function(){
-				var cur_el = $j(this);
-				$j('#checkout-agreements input').each(function(){
-					
-					if(cur_el.prop('name') == $j(this).prop('name')){
-						$j(this).prop('checked', cur_el.prop('checked'));
-					}
-				});
-				
-				// save agreements statuses
-				IWD.OPC.agreements = $j('#checkout-agreements').serializeArray();
-			});
 		}
 };
 
@@ -1387,7 +911,6 @@ IWD.OPC.Login ={
 		},
 		
 		prepareResponse: function(response){
-			IWD.OPC.Checkout.xhr = null;
 			IWD.OPC.Checkout.hideLoader();
 			if (typeof(response.error)!="undefined"){
 				alert(response.message);
@@ -1398,45 +921,34 @@ IWD.OPC.Login ={
 		}
 };
 
-IWD.OPC.Decorator = {
-		initReviewBlock: function(){
-			$j('a.review-total').click(function(){
-				if ($j(this).hasClass('open')){
-					$j(this).removeClass('open')
-					$j('#opc-review-block').addClass('hidden');
-				}else{
-					$j(this).addClass('open')
-					$j('#opc-review-block').removeClass('hidden');
-				}
-			});
-		},
-		updateGrandTotal: function(response){
-			$j('.opc-review-actions h5 span').html(response.grandTotal);
-			$j('.review-total span').html(response.grandTotal);
-		},
-		
-		setActivePayment: function(){
-			//check and setup current active method 
-			this.setCurrentPaymentActive();
+IWD.OPC.Geo = {
+		init: function(){
 			
-			$j(document).on('click','#checkout-payment-method-load dt', function(){
-				$j('#checkout-payment-method-load dt').removeClass('active');
-				$j(this).addClass('active');
-			});
-		},
-		
-		setCurrentPaymentActive: function(){
-			var method = payment.currentMethod;
-			$j('#p_method_'+method).parent().addClass('active');
+			if (IWD.OPC.Checkout.config.geoCountry===false){			
+				return;
+			}else{
+				//setup country for billing and than for shipping
+				if ($j('#opc-address-form-billing select[name="billing[country_id]"]').is(":visible")){					
+					$j('#opc-address-form-billing select[name="billing[country_id]"]').val(IWD.OPC.Checkout.config.geoCountry);
+					billingRegionUpdater .update();
+				}				
+			}
+				
+			
+			if (IWD.OPC.Checkout.config.geoCity===false){			
+				return;
+			}else{
+				$j('#opc-address-form-billing [name="billing[city]"]').val(IWD.OPC.Checkout.config.geoCity);														
+			}
+			
+			
 		}
 };
 
 $j(document).ready(function(){
 	IWD.OPC.Checkout.init();
 	IWD.OPC.Coupon.init();
-	IWD.OPC.Comment.init();
 	IWD.OPC.Agreement.init();
 	IWD.OPC.Login.init();
-	IWD.OPC.Decorator.initReviewBlock();
-	IWD.OPC.Decorator.setActivePayment();
+	IWD.OPC.Geo.init();
 });

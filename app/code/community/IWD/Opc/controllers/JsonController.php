@@ -6,6 +6,9 @@ class IWD_Opc_JsonController extends Mage_Core_Controller_Front_Action{
 	/* @var $_order Mage_Sales_Model_Order */
 	protected $_order;
 	
+	
+	
+	
 	/**
 	 * Get Order by quoteId
 	 *
@@ -119,50 +122,32 @@ class IWD_Opc_JsonController extends Mage_Core_Controller_Front_Action{
 	 *
 	 * @return string
 	 */
-	protected function _getPaymentMethodsHtml($use_method = false, $just_save = false){
-	
+	protected function _getPaymentMethodsHtml(){
+		
 		/** UPDATE PAYMENT METHOD **/
-		if($use_method && $use_method != -1)
-			$apply_method = $use_method;
-		else
-		{
-			if($use_method == -1)
-				$apply_method = Mage::getStoreConfig(self::XML_PATH_DEFAULT_PAYMENT);
-			else
-			{
-				$apply_method = Mage::helper('opc')->getSelectedPaymentMethod();
-				if(empty($apply_method))
-					$apply_method = Mage::getStoreConfig(self::XML_PATH_DEFAULT_PAYMENT);
-			}
-		}
-
+		$defaultPaymentMethod = Mage::getStoreConfig(self::XML_PATH_DEFAULT_PAYMENT);
 		$_cart = $this->_getCart();
 		$_quote = $_cart->getQuote();
-		$_quote->getPayment()->setMethod($apply_method);
+		$_quote->getPayment()->setMethod($defaultPaymentMethod);
 		$_quote->setTotalsCollectedFlag(false)->collectTotals();
 		$_quote->save();
-
-		if($just_save)
-			return '';
-
+		
+		
 		$layout = $this->getLayout();
 		$update = $layout->getUpdate();
 		$update->load('checkout_onepage_paymentmethod');
 		$layout->generateXml();
-		$layout->generateBlocks();	
+		$layout->generateBlocks();
 		$output = $layout->getOutput();
 		return $output;
 	}
-
+	
 	/**
 	 * Get review step html
 	 *
 	 * @return string
 	 */
 	protected function _getReviewHtml(){
-		
-		//clear cache
-		Mage::app()->getCacheInstance()->cleanType('layout');
 		
 		$layout = $this->getLayout();
 		$update = $layout->getUpdate();
@@ -171,9 +156,6 @@ class IWD_Opc_JsonController extends Mage_Core_Controller_Front_Action{
 		$layout->generateBlocks();
 		$review = $layout->getBlock('root');
 		$review->setTemplate('opc/onepage/review/info.phtml');
-		
-		//clear cache
-		Mage::app()->getCacheInstance()->cleanType('layout');
 		return $review->toHtml();
 	}
 	
@@ -218,18 +200,10 @@ class IWD_Opc_JsonController extends Mage_Core_Controller_Front_Action{
 			
 			
 			$customerAddressId = $this->getRequest()->getPost('billing_address_id', false);
-
+	
 			if (isset($data['email'])) {
 				$data['email'] = trim($data['email']);
 			}
-
-			// get grand totals before
-			$totals_before = $this->_getSession()->getQuote()->getGrandTotal();
-			
-			/// get list of available methods before billing changes
-			$methods_before = Mage::helper('opc')->getAvailablePaymentMethods();
-			///////
-			
 			$result = $this->getOnepage()->saveBilling($data, $customerAddressId);
 	
 			if (!isset($result['error'])) {
@@ -243,38 +217,14 @@ class IWD_Opc_JsonController extends Mage_Core_Controller_Front_Action{
 				if (isset($data['use_for_shipping']) && $data['use_for_shipping'] == 1) {				
 					$result['shipping'] = $this->_getShippingMethodsHtml();
 				}
-
-				/// get list of available methods after discount changes
-				$methods_after = Mage::helper('opc')->getAvailablePaymentMethods();
-				///////
 				
-				// check if need to reload payment methods
-				$use_method = Mage::helper('opc')->checkUpdatedPaymentMethods($methods_before, $methods_after);
-
-				if($use_method != -1)
-				{
-					if(empty($use_method))
-						$use_method = -1;
-					
-					// just save new method, (because retuned html is empty) 
-					$result['payments'] = $this->_getPaymentMethodsHtml($use_method, true);
-					// and need to send reload method request
-					$result['reload_payments'] = true; 
-				}
-				/////
-
-				// get grand totals after
-				$totals_after = $this->_getSession()->getQuote()->getGrandTotal();
-				
-				if($totals_before != $totals_after)
-					$result['reload_totals'] = true;
 				
 			}else{
 				
 				$responseData['error'] = true;
 				$responseData['message'] = $result['message'];
 			}
-			$this->getResponse()->setHeader('Content-type','application/json', true);
+	
 			$this->getResponse()->setBody(Mage::helper('core')->jsonEncode($result));
 		}
 	}
@@ -291,168 +241,29 @@ class IWD_Opc_JsonController extends Mage_Core_Controller_Front_Action{
 		//TODO create response if post not exist
 		$responseData = array();
 	
-		$result = array();
-
-		if ($this->getRequest()->isPost()) {			
-			// get grand totals after
-			$totals_before = $this->_getSession()->getQuote()->getGrandTotal();
-
+		if ($this->getRequest()->isPost()) {
 			$data = $this->getRequest()->getPost('shipping', array());
 			$customerAddressId = $this->getRequest()->getPost('shipping_address_id', false);
 			$result = $this->getOnepage()->saveShipping($data, $customerAddressId);
 
-			if (isset($result['error'])){
-				$responseData['error'] = true;
-				$responseData['message'] = $result['message'];
-				$responseData['messageBlock'] = 'shipping';
-			}else{
-					
-				$responseData['shipping'] = $this->_getShippingMethodsHtml();
-				
-				// get grand totals after
-				$totals_after = $this->_getSession()->getQuote()->getGrandTotal();
-				
-				if($totals_before != $totals_after)
-					$responseData['reload_totals'] = true;
-			}
 		}
 
+		if (isset($resultBilling['error'])){
+			$responseData['error'] = true;
+			$responseData['message'] = $result['message'];
+			$responseData['messageBlock'] = 'shipping';
+		}else{
+				
+			$responseData['shipping'] = $this->_getShippingMethodsHtml();
+			
+		}
+	
 		$this->getResponse()->setHeader('Content-type','application/json', true);
 		$this->getResponse()->setBody(Mage::helper('core')->jsonEncode($responseData));
 	
 	}
 	
-	/**
-	 * reload available shipping methods based on address
-	 */
-	public function reloadShippingsPaymentsAction(){
-	
-		if ($this->_expireAjax()) {
-			return;
-		}
-	
-		if ($this->getRequest()->isPost()) {
-			
-			$result = array();
-			
-			$address_type = false;
-			$billing = $this->getRequest()->getPost('billing', array());
-			if(!empty($billing) && is_array($billing) && isset($billing['address_id'])){
-				$address_type = 'billing';
-				$data = $billing;
-			}
-			else{
-				$address_type = 'shipping';
-				$data = $this->getRequest()->getPost('shipping', array());
-			}
 
-			// get grand totals after
-			$totals_before = $this->_getSession()->getQuote()->getGrandTotal();
-			
-			/// get list of available methods before billing changes
-			$methods_before = Mage::helper('opc')->getAvailablePaymentMethods();
-			///////
-					
-			$customerAddressId = $this->getRequest()->getPost($address_type.'_address_id', false);
-			$cust_addr_id = $customerAddressId;
-	
-			if($address_type == 'billing')
-				$address = $this->getOnepage()->getQuote()->getBillingAddress();
-			else
-				$address = $this->getOnepage()->getQuote()->getShippingAddress();
-			
-			if (!empty($cust_addr_id))
-			{
-				$cust_addr = Mage::getModel('customer/address')->load($cust_addr_id);
-				if ($cust_addr->getId())
-				{
-					if ($cust_addr->getCustomerId() != $this->getOnepage()->getQuote()->getCustomerId())
-						$result = array('error' => 1, 'message' => Mage::helper('checkout')->__('Customer Address is not valid.'));
-					else
-						$address->importCustomerAddress($cust_addr);
-				}
-			}
-			else
-			{
-				unset($data['address_id']);
-				$address->addData($data);
-			}
-
-			if(!isset($result['error'])){
-				$address->implodeStreetAddress();
-				
-				$ufs = 0;
-				
-				if($address_type == 'billing'){
-					if (!$this->getOnepage()->getQuote()->isVirtual())
-					{
-						if(isset($data['use_for_shipping']))
-							$ufs = (int) $data['use_for_shipping'];
-					
-						switch($ufs)
-						{
-							case 0:
-								$ship = $this->getOnepage()->getQuote()->getShippingAddress();
-								$ship->setSameAsBilling(0);
-								break;
-							case 1:
-								$bill = clone $address;
-								$bill->unsAddressId()->unsAddressType();
-								$ship = $this->getOnepage()->getQuote()->getShippingAddress();
-								$ship_method = $ship->getShippingMethod();
-								$ship->addData($bill->getData());
-								$ship->setSameAsBilling(1)->setShippingMethod($ship_method)->setCollectShippingRates(true);
-								break;
-						}
-					}
-				}
-				else						
-					$address->setCollectShippingRates(true);
-
-				$this->getOnepage()->getQuote()->collectTotals()->save();
-
-				if ($this->getOnepage()->getQuote()->isVirtual())
-					$result['isVirtual'] = true;
-	
-				if(($address_type == 'billing' && $ufs == 1) || $address_type == 'shipping')
-					$result['shipping'] = $this->_getShippingMethodsHtml();
-	
-				/// get list of available methods after discount changes
-				$methods_after = Mage::helper('opc')->getAvailablePaymentMethods();
-				///////
-
-				// check if need to reload payment methods
-				$use_method = Mage::helper('opc')->checkUpdatedPaymentMethods($methods_before, $methods_after);
-
-				if($use_method != -1)
-				{
-					if(empty($use_method))
-						$use_method = -1;
-						
-					// just save new method, (because retuned html is empty)
-					$result['payments'] = $this->_getPaymentMethodsHtml($use_method, true);
-					// and need to send reload method request
-					$result['reload_payments'] = true;
-				}
-				else{
-					// get grand totals after
-					$totals_after = $this->_getSession()->getQuote()->getGrandTotal();
-					
-					if($totals_before != $totals_after)
-						$result['reload_totals'] = true;
-				}
-				/////
-	
-			}else{
-				$result['error'] = true;
-				$result['message'] = $result['message'];
-			}
-			
-			$this->getResponse()->setHeader('Content-type','application/json', true);
-			$this->getResponse()->setBody(Mage::helper('core')->jsonEncode($result));
-		}
-	}
-	
 	
 	/**
 	 * Shipping method save action
@@ -482,7 +293,6 @@ class IWD_Opc_JsonController extends Mage_Core_Controller_Front_Action{
 				$this->getResponse()->setBody(Mage::helper('core')->jsonEncode($result));
 	
 				$responseData['review'] = $this->_getReviewHtml();
-				$responseData['grandTotal'] = Mage::helper('opc')->getGrandTotal();
 				/*$result['update_section'] = array(
 						'name' => 'payment-method',
 						'html' => $this->_getPaymentMethodsHtml()
@@ -503,7 +313,6 @@ class IWD_Opc_JsonController extends Mage_Core_Controller_Front_Action{
 		}
 		$responseData = array();
 		$responseData['review'] = $this->_getReviewHtml();
-		$responseData['grandTotal'] = Mage::helper('opc')->getGrandTotal();
 		$this->getResponse()->setHeader('Content-type','application/json', true);
 		$this->getResponse()->setBody(Mage::helper('core')->jsonEncode($responseData));
 	}
@@ -539,10 +348,12 @@ class IWD_Opc_JsonController extends Mage_Core_Controller_Front_Action{
 	
 			// get section and redirect data
 			$redirectUrl = $this->getOnepage()->getQuote()->getPayment()->getCheckoutRedirectUrl();
-			if (empty($result['error'])) {
+			if (empty($result['error']) && !$redirectUrl) {
+				
 				$this->loadLayout('checkout_onepage_review');
+				
 				$result['review'] = $this->_getReviewHtml();
-				$result['grandTotal'] = Mage::helper('opc')->getGrandTotal();
+				
 			}
 			if ($redirectUrl) {
 				$result['redirect'] = $redirectUrl;
@@ -565,30 +376,33 @@ class IWD_Opc_JsonController extends Mage_Core_Controller_Front_Action{
 	
 	
 	
-	/**
-	* Create order action
-	*/
-	public function saveOrderAction(){
-        if ($this->_expireAjax()) {
+	public function saveOrderAction()
+	{
+		//if (!$this->_validateFormKey()) {
+			//$this->_redirect('*/*');
+			//return;
+		//}
+	
+		if ($this->_expireAjax()) {
             return;
         }
-
 	
 		$version = Mage::getVersionInfo();
-	
+		
 		$result = array();
 		try {
-			if ($requiredAgreements = Mage::helper('checkout')->getRequiredAgreementIds()) {
+			$requiredAgreements = Mage::helper('checkout')->getRequiredAgreementIds();
+			if ($requiredAgreements) {
 				$postedAgreements = array_keys($this->getRequest()->getPost('agreement', array()));
-				if ($diff = array_diff($requiredAgreements, $postedAgreements)) {                    
+				$diff = array_diff($requiredAgreements, $postedAgreements);
+				if ($diff) {
 					$result['error'] = $this->__('Please agree to all the terms and conditions before placing the order.');
 					$this->getResponse()->setBody(Mage::helper('core')->jsonEncode($result));
 					return;
 				}
 			}
-
 	
-			$data = $this->getRequest()->getPost('payment', false);
+			$data = $this->getRequest()->getPost('payment', array());
 			if ($data) {
 				/** Magento CE 1.8 version**/
 				if ($version['minor'] == 8){
@@ -603,17 +417,6 @@ class IWD_Opc_JsonController extends Mage_Core_Controller_Front_Action{
 				$this->getOnepage()->getQuote()->getPayment()->importData($data);
 			}
 	
-			// save comments
-			if (Mage::helper('opc')->isShowComment())
-			{
-				$comment = $this->getRequest()->getPost('customer_comment', '');
-				if(empty($comment))
-					$comment  = Mage::getSingleton('core/session')->getOpcOrderComment();
-				else
-					Mage::getSingleton('core/session')->setOpcOrderComment($comment);
-			}
-			///
-
 			$this->getOnepage()->saveOrder();
 			
 			/** Magento CE 1.6 version**/
@@ -641,7 +444,7 @@ class IWD_Opc_JsonController extends Mage_Core_Controller_Front_Action{
 			$message = $e->getMessage();
 			
 			if (!empty($message)) {
-				$result['error'] = $message;
+				$result['error_messages'] = $message;
 			}
 			
 			$result['payment'] = $this->_getPaymentMethodsHtml();
@@ -663,21 +466,24 @@ class IWD_Opc_JsonController extends Mage_Core_Controller_Front_Action{
 			if ($updateSection) {				
 				$this->getOnepage()->getCheckout()->setUpdateSection(null);
 			}
+			
 		} catch (Exception $e) {
 			Mage::logException($e);
 			Mage::helper('checkout')->sendPaymentFailedEmail($this->getOnepage()->getQuote(), $e->getMessage());
 			$result['error'] = $this->__('There was an error processing your order. Please contact us or try again later.');
-		}		
+		}
+		
 		$this->getOnepage()->getQuote()->save();
 		/**
 		 * when there is redirect to third party, we don't want to save order yet.
 		 * we will save the order in return action.
 		*/
-		if (isset($redirectUrl) && !empty($redirectUrl)) {
+		if (isset($redirectUrl)) {
 			$result['redirect'] = $redirectUrl; 
 		}else{
 			$result['redirect'] = Mage::getUrl('checkout/onepage/success', array('_secure'=>true)) ;
 		}
+		
 		
 		$this->getResponse()->setHeader('Content-type','application/json', true);
 		$this->getResponse()->setBody(Mage::helper('core')->jsonEncode($result));
